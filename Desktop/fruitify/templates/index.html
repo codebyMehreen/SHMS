@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fruitify - Fresh Fruits Online</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="main-header" id="home">
+    <nav class="top-nav">
+      <div class="nav-links">
+        <a href="#home">Home</a>
+        <a href="#about">About Us</a>
+        <a href="#shop">Shop</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <a href="#" class="cart-preview" onclick="openCartModal()">🛒 Cart (<span id="cartCount">0</span>)</a>
+    </nav>
+
+    <!-- Flex container for text and image -->
+    <div class="homepage-content">
+      <div class="brand-content">
+        <h1>Fruitify - Fresh Fruits Online</h1>
+        <p>Delivering nature’s sweetness to your doorstep. Explore our handpicked selection of fresh, organic fruits grown with care and delivered with love.</p>
+        <a href="#shop" class="order-btn">Order Now</a>
+      </div>
+      <div class="right-image">
+        <img src="{{ url_for('static', filename='uploads/fruit-banner.png') }}" alt="Fresh fruit display">
+      </div>
+    </div>
+  </header>
+
+  <!-- Divider -->
+  <div class="section-divider"></div>
+
+  <!-- About Us -->
+  <section id="about" class="about-section fade-in">
+    <h2>🌱 About Us</h2>
+    <p>Fruitify is built on a simple idea: fresh fruits, delivered with love. We partner with local farms to bring you the best seasonal produce, grown sustainably and packed with care.</p>
+    <p>Our mission is to make healthy living joyful and accessible. Whether you're craving juicy mangoes or crisp apples, we’ve got you covered—one box at a time.</p>
+  </section>
+
+  <!-- Promise -->
+  <div class="our-promise-card fade-in">
+    <h2>Our Promise</h2>
+    <p class="promise-heading">🌿 Our Promise to You 🌿</p>
+    <ul class="promise-list">
+      <li>✔ 100% Customer Satisfaction Guaranteed</li>
+      <li>✔ Fresh From the Farm – Delivered to Your Door</li>
+      <li>✔ No Chemicals, No Preservatives – Just Pure Goodness</li>
+      <li>✔ Picked Today, Delivered Tomorrow</li>
+      <li>✔ Nature’s Best, Served Fresh</li>
+    </ul>
+  </div>
+
+  <!-- Divider -->
+  <div class="section-divider"></div>
+
+  <!-- Shop Section -->
+  <section id="shop" class="shop-section fade-in">
+    <h2>Shop Fresh Fruits 🍇</h2>
+    <p class="shop-intro">Browse our selection of handpicked, farm-fresh fruits. Quality you can taste, delivered with care.</p>
+
+    <div class="shop-controls">
+      <input type="text" id="searchInput" placeholder="Search fruits..." />
+      <div class="filter-buttons">
+        <button onclick="filterFruits('all')">All</button>
+        <button onclick="filterFruits('seasonal')">Seasonal</button>
+        <button onclick="filterFruits('tropical')">Tropical</button>
+        <button onclick="filterFruits('local')">Local</button>
+      </div>
+    </div>
+
+    <div class="shop-grid" id="fruitGrid">
+      {% for product in products %}
+      <div class="product-card fade-in" data-category="{{ product.category }}" data-label="{{ product.label }}">
+        <div class="badge">{{ product.label }}</div>
+        <div class="stock-status">{{ product.stock }}</div>
+        <img src="{{ url_for('static', filename='uploads/' ~ product.image) }}" alt="{{ product.name }}">
+        <div class="product-info">
+          <h3 class="fruit-name">{{ product.name }}</h3>
+          <p>{{ product.price }}</p>
+          <div class="quantity-selector">
+            <label for="qty-{{ loop.index }}">Qty:</label>
+            <input type="number" id="qty-{{ loop.index }}" min="1" value="1">
+          </div>
+          <div class="button-group">
+            <a href="#" class="buy-btn"
+               onclick="addToCart('{{ product.name }}', '{{ product.price }}', 1); openCartModal();">
+               Buy Now
+            </a>
+            <a href="#" class="cart-btn"
+               onclick="addToCart('{{ product.name }}', '{{ product.price }}', document.getElementById('qty-{{ loop.index }}').value)">
+               Add to Cart
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Divider Line -->
+  <div class="section-divider"></div>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact-section fade-in">
+    <h2>📬 Get in Touch</h2>
+    <p class="contact-intro">We’d love to hear from you! Whether it’s a question, suggestion, or just a fruity hello—reach out anytime.</p>
+
+    <form class="contact-form" method="POST" action="/submit-feedback">
+      <input type="text" name="name" placeholder="Your Name" required />
+      <input type="email" name="email" placeholder="Your Email" required />
+      <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+      <button type="submit">Send Message</button>
+    </form>
+
+    <div class="contact-details">
+      <p><strong>Email:</strong> <a href="mailto:hello@fruitify.pk">hello@fruitify.pk</a></p>
+      <p><strong>Instagram:</strong> <a href="https://instagram.com/fruitify.pk" target="_blank">@fruitify.pk</a></p>
+      <p><strong>WhatsApp:</strong> <a href="https://wa.me/923001234567" target="_blank">+92-324-6788007</a></p>
+    </div>
+  </section>
+
+  <!-- Cart Modal -->
+  <div id="cartModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeCartModal()">&times;</span>
+      <h2>Your Cart</h2>
+      <ul id="cartItems"></ul>
+      <button onclick="closeCartModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Your existing JavaScript remains unchanged
+  </script>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2025 Fruitify. All rights reserved.</p>
+  </footer>
+</body>
+</html>
