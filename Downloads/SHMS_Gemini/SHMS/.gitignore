@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Database (never upload personal data)
+database/shms.db
+
+# ML Models (auto-regenerate on first run)
+models/*.pkl
+
+# Generated reports
+reports/*.pdf
+
+# Environment secrets
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% block title %}Health Entries — SHMS{% endblock %}
+
+{% block head %}
+<style>
+  .entries-wrap {
+    max-width: 1100px; margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+
+  .page-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap;
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .page-header h1 {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px;
+    margin-bottom: 0.2rem;
+  }
+  .page-header p { color: var(--muted); font-size: 0.875rem; }
+  .header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+  /* TABLE */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 0.85rem 1.1rem;
+    font-size: 0.72rem; font-weight: 700;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em;
+    text-align: left; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 0.9rem 1.1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid rgba(30,52,68,0.5);
+    color: var(--text); vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(0,212,170,0.03); }
+
+  .metric-val {
+    font-family: var(--font-head);
+    font-weight: 700; font-size: 0.95rem;
+  }
+  .metric-unit { color: var(--muted); font-size: 0.75rem; }
+  .dash-val { color: var(--muted); }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.25rem 0.65rem; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+  }
+  .badge-ok     { background: rgba(0,212,170,0.15); color: var(--accent); }
+  .badge-warn   { background: rgba(255,179,71,0.15); color: var(--warn); }
+  .badge-danger { background: rgba(255,79,109,0.15); color: var(--danger); }
+
+  .action-btns { display: flex; gap: 0.4rem; }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.4rem; padding: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+  .page-btn {
+    padding: 0.45rem 0.85rem; border-radius: 8px;
+    font-size: 0.85rem; text-decoration: none;
+    color: var(--muted); border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .page-btn:hover { color: var(--text); border-color: var(--accent); }
+  .page-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .page-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+  /* IMPORT MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2rem; width: 100%; max-width: 440px;
+    animation: popIn 0.2s ease;
+  }
+  @keyframes popIn {
+    from { opacity:0; transform: scale(0.95) translateY(10px); }
+    to   { opacity:1; transform: scale(1) translateY(0); }
+  }
+  .modal-title {
+    font-family: var(--font-head); font-size: 1.2rem; font-weight: 800;
+    margin-bottom: 0.4rem;
+  }
+  .modal-sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+  .file-drop {
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 2rem; text-align: center; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .file-drop:hover { border-color: var(--accent); }
+  .file-drop input[type="file"] { display: none; }
+  .file-drop-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .file-drop-text { font-size: 0.875rem; color: var(--muted); }
+  .file-name { margin-top: 0.75rem; font-size: 0.85rem; color: var(--accent); font-weight: 600; }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 4rem 2rem; text-align: center;
+    border-top: 1px solid var(--border);
+  }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-title { font-family: var(--font-head); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .empty-sub { color: var(--muted); font-size: 0.875rem; }
+
+  /* DELETE confirm */
+  .delete-form { display: inline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="entries-wrap">
+
+  <div class="page-header">
+    <div>
+      <h1>Health Entries</h1>
+      <p>{{ entries.total }} total records — your complete health history</p>
+    </div>
+    <div class="header-actions">
+      <a href="{{ url_for('health.export_csv') }}" class="btn btn-outline">⬇ Export CSV</a>
+      <button onclick="document.getElementById('importModal').classList.add('open')"
+              class="btn btn-outline">⬆ Import CSV</button>
+      <a href="{{ url_for('health.log_entry') }}" class="btn btn-primary">+ Log Entry</a>
+    </div>
+  </div>
+
+  <div class="table-card">
+    {% if entries.items %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+          <th>Blood Pressure</th>
+          <th>Sugar</th>
+          <th>Sleep</th>
+          <th>Exercise</th>
+          <th>Mood</th>
+          <th>Stress</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries.items %}
+        <tr>
+          <td>
+            <div style="font-weight:600;">{{ entry.timestamp.strftime('%b %d, %Y') }}</div>
+            <div style="font-size:0.75rem; color:var(--muted)">{{ entry.timestamp.strftime('%H:%M') }}</div>
+          </td>
+          <td>
+            {% if entry.weight %}
+              <span class="metric-val">{{ entry.weight }}</span>
+              <span class="metric-unit"> kg</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% if entry.systolic_bp %}
+              <span class="metric-val">{{ entry.systolic_bp }}/{{ entry.diastolic_bp }}</span>
+              <span class="metric-unit"> mmHg</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% if entry.sugar_level %}
+              <span class="metric-val">{{ entry.sugar_level }}</span>
+              <span class="metric-unit"> mg/dL</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% if entry.sleep_hours %}
+              <span class="metric-val">{{ entry.sleep_hours }}</span>
+              <span class="metric-unit"> hrs</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% if entry.exercise_minutes %}
+              <span class="metric-val">{{ entry.exercise_minutes }}</span>
+              <span class="metric-unit"> min</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% if entry.mood %}
+              <span class="metric-val" style="color:var(--accent)">{{ entry.mood }}</span>
+              <span class="metric-unit">/10</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% if entry.stress_level %}
+              <span class="metric-val" style="color:{% if entry.stress_level >= 7 %}var(--danger){% elif entry.stress_level >= 4 %}var(--warn){% else %}var(--accent){% endif %}">
+                {{ entry.stress_level }}
+              </span>
+              <span class="metric-unit">/10</span>
+            {% else %}<span class="dash-val">—</span>{% endif %}
+          </td>
+          <td>
+            {% set alerts = [] %}
+            {% if entry.systolic_bp and entry.systolic_bp > 140 %}{% set _ = alerts.append('High BP') %}{% endif %}
+            {% if entry.sugar_level and entry.sugar_level >= 126 %}{% set _ = alerts.append('High Sugar') %}{% endif %}
+            {% if entry.sleep_hours and entry.sleep_hours < 5 %}{% set _ = alerts.append('Low Sleep') %}{% endif %}
+            {% if entry.stress_level and entry.stress_level >= 8 %}{% set _ = alerts.append('High Stress') %}{% endif %}
+
+            {% if alerts %}
+              <span class="badge badge-danger">⚠ {{ alerts[0] }}</span>
+            {% elif (entry.systolic_bp and entry.systolic_bp > 120) or (entry.sugar_level and entry.sugar_level > 100) %}
+              <span class="badge badge-warn">⚡ Borderline</span>
+            {% else %}
+              <span class="badge badge-ok">✓ Normal</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="action-btns">
+              <a href="{{ url_for('ai.predict', entry_id=entry.id) }}"
+                 class="btn btn-primary btn-sm" style="font-size:0.75rem;">🤖 AI</a>
+              <a href="{{ url_for('health.edit_entry', entry_id=entry.id) }}"
+                 class="btn btn-outline btn-sm">Edit</a>
+              <form class="delete-form" method="POST"
+                    action="{{ url_for('health.delete_entry', entry_id=entry.id) }}"
+                    onsubmit="return confirm('Delete this entry?')">
+                <button type="submit" class="btn btn-danger btn-sm">Del</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if entries.pages > 1 %}
+    <div class="pagination">
+      <a href="{{ url_for('health.all_entries', page=entries.prev_num) }}"
+         class="page-btn {% if not entries.has_prev %}disabled{% endif %}">← Prev</a>
+      {% for p in entries.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="{{ url_for('health.all_entries', page=p) }}"
+             class="page-btn {% if p == entries.page %}active{% endif %}">{{ p }}</a>
+        {% else %}
+          <span style="color:var(--muted); padding: 0 0.3rem;">…</span>
+        {% endif %}
+      {% endfor %}
+      <a href="{{ url_for('health.all_entries', page=entries.next_num) }}"
+         class="page-btn {% if not entries.has_next %}disabled{% endif %}">Next →</a>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No entries yet</div>
+      <p class="empty-sub">Start logging your health data to see it here.</p>
+      <a href="{{ url_for('health.log_entry') }}" class="btn btn-primary" style="margin-top:1rem;">
+        + Log First Entry
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-title">📥 Import Health Data</div>
+    <p class="modal-sub">Upload a CSV exported from SHMS. New entries will be added to your existing data.</p>
+
+    <form method="POST" action="{{ url_for('health.import_csv') }}" enctype="multipart/form-data">
+      <div class="file-drop" onclick="document.getElementById('csvInput').click()">
+        <div class="file-drop-icon">📂</div>
+        <div class="file-drop-text">Click to select your CSV file</div>
+        <div class="file-name" id="fileName">No file selected</div>
+        <input type="file" name="csv_file" id="csvInput" accept=".csv"
+               onchange="document.getElementById('fileName').textContent = this.files[0]?.name || 'No file selected'">
+      </div>
+      <div class="modal-actions">
+        <button type="button" onclick="document.getElementById('importModal').classList.remove('open')"
+                class="btn btn-outline" style="flex:1">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex:2">⬆ Import</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Close modal on overlay click
+  document.getElementById('importModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — SHMS{% endblock %}
+
+{% block head %}
+<style>
+  .dash-wrap {
+    max-width: 1200px; margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+
+  .dash-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap;
+    gap: 1rem; margin-bottom: 2.5rem;
+  }
+  .dash-greeting {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .dash-greeting span { color: var(--accent); }
+  .dash-date { color: var(--muted); font-size: 0.875rem; margin-top: 0.2rem; }
+
+  /* STAT CARDS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .stat-card::after {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 60px; height: 60px; border-radius: 50%;
+    transform: translate(20px, -20px);
+    opacity: 0.15;
+  }
+  .stat-card.green::after { background: var(--accent); }
+  .stat-card.blue::after  { background: var(--accent2); }
+  .stat-card.red::after   { background: var(--danger); }
+  .stat-card.orange::after{ background: var(--warn); }
+
+  .stat-label {
+    font-size: 0.75rem; font-weight: 600;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+  }
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 1.9rem; font-weight: 800; line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .stat-card.green .stat-value { color: var(--accent); }
+  .stat-card.blue  .stat-value { color: var(--accent2); }
+  .stat-card.red   .stat-value { color: var(--danger); }
+  .stat-card.orange.stat-value { color: var(--warn); }
+  .stat-note { font-size: 0.78rem; color: var(--muted); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    background: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    padding: 4rem 2rem;
+    text-align: center;
+  }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-title {
+    font-family: var(--font-head);
+    font-size: 1.3rem; font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .empty-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+  /* ENTRIES TABLE */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .table-header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-title {
+    font-family: var(--font-head);
+    font-size: 0.95rem; font-weight: 700;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+    text-align: left;
+    background: var(--bg2);
+  }
+  td {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.875rem;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .badge {
+    display: inline-block; padding: 0.25rem 0.65rem;
+    border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+  }
+  .badge-ok      { background: rgba(0,212,170,0.15); color: var(--accent); }
+  .badge-warn    { background: rgba(255,179,71,0.15); color: var(--warn); }
+  .badge-danger  { background: rgba(255,79,109,0.15); color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash-wrap">
+
+  <!-- Header -->
+  <div class="dash-header">
+    <div>
+      <div class="dash-greeting">
+        Good day, <span>{{ current_user.full_name.split()[0] }}</span> 👋
+      </div>
+      <div class="dash-date" id="live-date"></div>
+    </div>
+    <a href="{{ url_for('health.log_entry') }}" class="btn btn-primary">+ Log Health Entry</a>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card green">
+      <div class="stat-label">Total Entries</div>
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-note">health logs recorded</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Latest Weight</div>
+      <div class="stat-value">
+        {% if latest and latest.weight %}
+          {{ latest.weight }}<small style="font-size:1rem"> kg</small>
+        {% else %}—{% endif %}
+      </div>
+      <div class="stat-note">last recorded</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Blood Pressure</div>
+      <div class="stat-value">
+        {% if latest and latest.systolic_bp %}
+          {{ latest.systolic_bp }}/{{ latest.diastolic_bp }}
+        {% else %}—{% endif %}
+      </div>
+      <div class="stat-note">mmHg — last entry</div>
+    </div>
+    <div class="stat-card orange" style="cursor:pointer" onclick="window.location='{{ url_for("ai.predict_latest") }}'">
+      <div class="stat-label">AI Risk Score</div>
+      <div class="stat-value" style="color:var(--warn)">
+        {% if latest %}🤖{% else %}—{% endif %}
+      </div>
+      <div class="stat-note">{% if latest %}Click to analyse{% else %}log data to unlock{% endif %}</div>
+    </div>
+  </div>
+
+  <!-- Recent Entries or Empty State -->
+  {% if entries %}
+  <div class="table-wrap">
+    <div class="table-header">
+      <div class="table-title">Recent Health Entries</div>
+      <a href="{{ url_for('health.all_entries') }}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+          <th>Blood Pressure</th>
+          <th>Sugar</th>
+          <th>Sleep</th>
+          <th>Mood</th>
+          <th>Status</th>
+          <th>AI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td>{{ entry.timestamp.strftime('%b %d, %Y') }}</td>
+          <td>{{ entry.weight or '—' }} {% if entry.weight %}kg{% endif %}</td>
+          <td>
+            {% if entry.systolic_bp %}
+              {{ entry.systolic_bp }}/{{ entry.diastolic_bp }} mmHg
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ entry.sugar_level or '—' }} {% if entry.sugar_level %}mg/dL{% endif %}</td>
+          <td>{{ entry.sleep_hours or '—' }} {% if entry.sleep_hours %}hrs{% endif %}</td>
+          <td>{{ entry.mood or '—' }}/10</td>
+          <td>
+            {% if entry.systolic_bp and entry.systolic_bp > 140 %}
+              <span class="badge badge-danger">High BP</span>
+            {% elif entry.sugar_level and entry.sugar_level > 180 %}
+              <span class="badge badge-warn">High Sugar</span>
+            {% else %}
+              <span class="badge badge-ok">Normal</span>
+            {% endif %}
+          </td>
+          <td><a href="{{ url_for('ai.predict', entry_id=entry.id) }}" class="btn btn-outline btn-sm" style="font-size:0.75rem;">Analyse</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">No health data yet</div>
+    <p class="empty-sub">Start logging your vitals to get AI-powered health predictions and personalized recommendations.</p>
+    <a href="{{ url_for('health.log_entry') }}" class="btn btn-primary btn-lg">Log Your First Entry →</a>
+  </div>
+  {% endif %}
+
+
+  <!-- QUICK LINKS ROW -->
+  <div style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap;">
+    <a href="{{ url_for('charts.trends') }}" class="btn btn-outline" style="flex:1; min-width:140px; justify-content:center;">
+      📈 View Trends
+    </a>
+    <a href="{{ url_for('ai.predict_latest') }}" class="btn btn-outline" style="flex:1; min-width:140px; justify-content:center;">
+      🤖 AI Analysis
+    </a>
+    <a href="{{ url_for('health.export_csv') }}" class="btn btn-outline" style="flex:1; min-width:140px; justify-content:center;">
+      ⬇ Export CSV
+    </a>
+    <a href="{{ url_for('reports.report_page') }}" class="btn btn-outline" style="flex:1; min-width:140px; justify-content:center;">
+      📄 PDF Report
+    </a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const d = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  document.getElementById('live-date').textContent = d.toLocaleDateString('en-US', opts);
+</script>
+{% endblock %}

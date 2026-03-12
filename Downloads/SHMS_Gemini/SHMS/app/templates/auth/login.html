@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}Login — SHMS{% endblock %}
+
+{% block head %}
+<style>
+  .auth-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* LEFT PANEL */
+  .auth-left {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 3rem;
+    position: relative; overflow: hidden;
+  }
+  .auth-left::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(0,212,170,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse at 80% 80%, rgba(0,153,255,0.05) 0%, transparent 60%);
+  }
+  .auth-left-content { position: relative; z-index: 1; max-width: 360px; }
+
+  .brand-mark {
+    font-family: var(--font-head);
+    font-size: 2.5rem; font-weight: 800;
+    color: var(--accent); letter-spacing: -2px;
+    margin-bottom: 0.5rem;
+  }
+  .brand-mark span { color: var(--text); }
+  .brand-tagline {
+    font-size: 0.95rem; color: var(--muted);
+    margin-bottom: 2.5rem; line-height: 1.5;
+  }
+
+  .stat-pills { display: flex; flex-direction: column; gap: 0.75rem; }
+  .stat-pill {
+    display: flex; align-items: center; gap: 0.85rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.85rem 1.1rem;
+    transition: border-color 0.2s;
+  }
+  .stat-pill:hover { border-color: var(--accent); }
+  .stat-pill-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+  }
+  .stat-pill-icon.green  { background: rgba(0,212,170,0.15); }
+  .stat-pill-icon.blue   { background: rgba(0,153,255,0.15); }
+  .stat-pill-icon.red    { background: rgba(255,79,109,0.15); }
+  .stat-pill-icon.orange { background: rgba(255,179,71,0.15); }
+  .stat-pill-text { font-size: 0.85rem; }
+  .stat-pill-text strong { display: block; color: var(--text); font-weight: 600; }
+  .stat-pill-text span   { color: var(--muted); font-size: 0.78rem; }
+
+  /* RIGHT PANEL */
+  .auth-right {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 3rem;
+  }
+  .auth-form-wrap { width: 100%; max-width: 380px; }
+
+  .auth-heading {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800;
+    margin-bottom: 0.3rem;
+    letter-spacing: -0.5px;
+  }
+  .auth-sub {
+    color: var(--muted); font-size: 0.875rem;
+    margin-bottom: 2rem;
+  }
+  .auth-sub a { color: var(--accent); text-decoration: none; }
+  .auth-sub a:hover { text-decoration: underline; }
+
+  .divider {
+    display: flex; align-items: center; gap: 0.75rem;
+    margin: 1.25rem 0; color: var(--muted); font-size: 0.8rem;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .remember-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.1rem;
+  }
+  .check-label {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.85rem; color: var(--muted); cursor: pointer;
+  }
+  .check-label input[type="checkbox"] { accent-color: var(--accent); }
+  .forgot-link { font-size: 0.85rem; color: var(--muted); text-decoration: none; }
+  .forgot-link:hover { color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .auth-page { grid-template-columns: 1fr; }
+    .auth-left { display: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+
+  <!-- LEFT: Branding -->
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div class="brand-mark">SHMS<span>.</span></div>
+      <p class="brand-tagline">Your personal AI health companion.<br>Monitor. Predict. Improve.</p>
+
+      <div class="stat-pills">
+        <div class="stat-pill">
+          <div class="stat-pill-icon green">🫀</div>
+          <div class="stat-pill-text">
+            <strong>AI Risk Detection</strong>
+            <span>Early warnings before symptoms appear</span>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-pill-icon blue">📊</div>
+          <div class="stat-pill-text">
+            <strong>Health Trend Charts</strong>
+            <span>Visualize your progress over time</span>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-pill-icon orange">💡</div>
+          <div class="stat-pill-text">
+            <strong>Smart Recommendations</strong>
+            <span>Personalized diet, sleep & exercise tips</span>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-pill-icon red">🔔</div>
+          <div class="stat-pill-text">
+            <strong>Instant Alerts</strong>
+            <span>Get notified when vitals are dangerous</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Login Form -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+      <h1 class="auth-heading">Welcome back</h1>
+      <p class="auth-sub">Don't have an account? <a href="{{ url_for('auth.register') }}">Sign up free</a></p>
+
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <div class="form-group">
+          <label class="form-label">Email address</label>
+          <input type="email" name="email" class="form-control"
+                 placeholder="you@example.com" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control"
+                 placeholder="••••••••" required>
+        </div>
+
+        <div class="remember-row">
+          <label class="check-label">
+            <input type="checkbox" name="remember"> Remember me
+          </label>
+          <a href="#" class="forgot-link">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg">
+          Sign In →
+        </button>
+      </form>
+
+      <div class="divider">or continue with</div>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-full">
+        Create new account
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

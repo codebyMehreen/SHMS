@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+{% block title %}Health Trends — SHMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  .trends-wrap {
+    max-width: 1200px; margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+
+  /* HEADER */
+  .trends-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap;
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .trends-header h1 {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800;
+    letter-spacing: -0.5px; margin-bottom: 0.25rem;
+  }
+  .trends-header p { color: var(--muted); font-size: 0.875rem; }
+
+  /* PERIOD SELECTOR */
+  .period-tabs {
+    display: flex; gap: 0.4rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.3rem;
+  }
+  .period-tab {
+    padding: 0.4rem 1rem; border-radius: 7px;
+    font-size: 0.825rem; font-weight: 600;
+    cursor: pointer; color: var(--muted);
+    text-decoration: none; transition: all 0.2s;
+    border: none; background: transparent;
+  }
+  .period-tab:hover { color: var(--text); }
+  .period-tab.active {
+    background: var(--accent); color: var(--bg);
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem; margin-bottom: 1.5rem;
+  }
+  .stat-pill {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .stat-pill:hover { border-color: var(--accent); }
+  .stat-pill-label {
+    font-size: 0.7rem; font-weight: 700;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 0.4rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .stat-pill-val {
+    font-family: var(--font-head);
+    font-size: 1.5rem; font-weight: 800;
+    line-height: 1;
+  }
+  .stat-pill-unit { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .trend-arrow { font-size: 0.8rem; }
+  .trend-up-bad   { color: var(--danger); }
+  .trend-up-good  { color: var(--accent); }
+  .trend-down-bad { color: var(--danger); }
+  .trend-down-good{ color: var(--accent); }
+  .trend-stable   { color: var(--muted); }
+
+  /* CHART CARDS */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem; margin-bottom: 1.5rem;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 1.5rem;
+    transition: border-color 0.2s;
+  }
+  .chart-card:hover { border-color: rgba(0,212,170,0.3); }
+  .chart-card.full-width { grid-column: 1 / -1; }
+  .chart-title {
+    font-family: var(--font-head);
+    font-size: 0.95rem; font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  .chart-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 1rem; }
+  .chart-container { width: 100%; height: 240px; }
+  .chart-container.tall { height: 300px; }
+
+  /* EMPTY STATE */
+  .empty-trends {
+    background: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    padding: 5rem 2rem; text-align: center;
+  }
+  .empty-trends-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+  .empty-trends-title {
+    font-family: var(--font-head);
+    font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem;
+  }
+  .empty-trends-sub { color: var(--muted); margin-bottom: 1.5rem; }
+
+  /* INSIGHT CARDS */
+  .insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .insight-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.25rem;
+  }
+  .insight-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  .insight-title {
+    font-family: var(--font-head);
+    font-size: 0.85rem; font-weight: 700; margin-bottom: 0.3rem;
+  }
+  .insight-text { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+  @media (max-width: 768px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-card.full-width { grid-column: auto; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="trends-wrap">
+
+  <!-- Header -->
+  <div class="trends-header">
+    <div>
+      <h1>📈 Health Trends</h1>
+      <p>{{ stats.entry_count }} entries in the last {{ period }} days — tracking your progress over time</p>
+    </div>
+    <div class="period-tabs">
+      <a href="{{ url_for('charts.trends', period=7) }}"
+         class="period-tab {% if period==7 %}active{% endif %}">7D</a>
+      <a href="{{ url_for('charts.trends', period=14) }}"
+         class="period-tab {% if period==14 %}active{% endif %}">14D</a>
+      <a href="{{ url_for('charts.trends', period=30) }}"
+         class="period-tab {% if period==30 %}active{% endif %}">30D</a>
+      <a href="{{ url_for('charts.trends', period=90) }}"
+         class="period-tab {% if period==90 %}active{% endif %}">90D</a>
+    </div>
+  </div>
+
+  {% if stats.entry_count == 0 %}
+  <!-- EMPTY STATE -->
+  <div class="empty-trends">
+    <div class="empty-trends-icon">📊</div>
+    <div class="empty-trends-title">No data for this period</div>
+    <p class="empty-trends-sub">Log at least 2 health entries to see your trends and charts.</p>
+    <a href="{{ url_for('health.log_entry') }}" class="btn btn-primary btn-lg">
+      + Log Health Entry
+    </a>
+  </div>
+
+  {% else %}
+
+  <!-- SUMMARY STATS -->
+  <div class="stats-row">
+
+    {% macro trend_icon(metric, higher_is_bad) %}
+      {% set d = trends_dir[metric] %}
+      {% if d == 'up' %}
+        <span class="trend-arrow {{ 'trend-up-bad' if higher_is_bad else 'trend-up-good' }}">
+          {{ '↑' }}
+        </span>
+      {% elif d == 'down' %}
+        <span class="trend-arrow {{ 'trend-down-bad' if not higher_is_bad else 'trend-down-good' }}">
+          {{ '↓' }}
+        </span>
+      {% else %}
+        <span class="trend-arrow trend-stable">→</span>
+      {% endif %}
+    {% endmacro %}
+
+    <div class="stat-pill">
+      <div class="stat-pill-label">Weight {{ trend_icon('weight', false) }}</div>
+      <div class="stat-pill-val" style="color:var(--accent2)">
+        {{ stats.avg_weight or '—' }}
+      </div>
+      <div class="stat-pill-unit">avg kg</div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-pill-label">Blood Pressure {{ trend_icon('systolic', true) }}</div>
+      <div class="stat-pill-val" style="color:var(--danger)">
+        {% if stats.avg_systolic %}{{ stats.avg_systolic }}/{{ stats.avg_diastolic }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-pill-unit">avg mmHg</div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-pill-label">Sugar {{ trend_icon('sugar', true) }}</div>
+      <div class="stat-pill-val" style="color:var(--warn)">
+        {{ stats.avg_sugar or '—' }}
+      </div>
+      <div class="stat-pill-unit">avg mg/dL</div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-pill-label">Sleep {{ trend_icon('sleep', false) }}</div>
+      <div class="stat-pill-val" style="color:var(--accent)">
+        {{ stats.avg_sleep or '—' }}
+      </div>
+      <div class="stat-pill-unit">avg hours</div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-pill-label">Exercise {{ trend_icon('exercise', false) }}</div>
+      <div class="stat-pill-val" style="color:var(--accent)">
+        {{ stats.avg_exercise or '—' }}
+      </div>
+      <div class="stat-pill-unit">avg min/day</div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-pill-label">Stress {{ trend_icon('stress', true) }}</div>
+      <div class="stat-pill-val" style="color:
+        {% if stats.avg_stress and stats.avg_stress >= 7 %}var(--danger)
+        {% elif stats.avg_stress and stats.avg_stress >= 5 %}var(--warn)
+        {% else %}var(--accent){% endif %}">
+        {{ stats.avg_stress or '—' }}
+      </div>
+      <div class="stat-pill-unit">avg /10</div>
+    </div>
+
+  </div>
+
+  <!-- CHARTS GRID -->
+  <div class="charts-grid">
+
+    <!-- Blood Pressure Chart -->
+    <div class="chart-card">
+      <div class="chart-title">❤️ Blood Pressure</div>
+      <div class="chart-sub">Systolic & Diastolic over time</div>
+      <div class="chart-container" id="bpChart"></div>
+    </div>
+
+    <!-- Blood Sugar Chart -->
+    <div class="chart-card">
+      <div class="chart-title">🩸 Blood Sugar</div>
+      <div class="chart-sub">Glucose level (mg/dL) over time</div>
+      <div class="chart-container" id="sugarChart"></div>
+    </div>
+
+    <!-- Sleep & Exercise Chart -->
+    <div class="chart-card">
+      <div class="chart-title">😴 Sleep Hours</div>
+      <div class="chart-sub">Daily sleep duration</div>
+      <div class="chart-container" id="sleepChart"></div>
+    </div>
+
+    <!-- Weight Chart -->
+    <div class="chart-card">
+      <div class="chart-title">⚖️ Weight</div>
+      <div class="chart-sub">Body weight (kg) over time</div>
+      <div class="chart-container" id="weightChart"></div>
+    </div>
+
+    <!-- Mood & Stress (full width) -->
+    <div class="chart-card full-width">
+      <div class="chart-title">🧠 Mood & Stress Levels</div>
+      <div class="chart-sub">Mental wellbeing scores (1–10) over time</div>
+      <div class="chart-container tall" id="moodChart"></div>
+    </div>
+
+    <!-- Exercise (full width) -->
+    <div class="chart-card full-width">
+      <div class="chart-title">🏃 Exercise Minutes</div>
+      <div class="chart-sub">Daily physical activity over time</div>
+      <div class="chart-container" id="exerciseChart"></div>
+    </div>
+
+  </div>
+
+  <!-- HEALTH INSIGHTS -->
+  <div style="font-family:var(--font-head); font-size:1.1rem; font-weight:800; margin-bottom:1rem;">
+    💡 Period Insights
+  </div>
+  <div class="insights-grid">
+
+    {% if stats.avg_sleep and stats.avg_sleep < 7 %}
+    <div class="insight-card" style="border-color:rgba(255,179,71,0.3)">
+      <div class="insight-icon">😴</div>
+      <div class="insight-title" style="color:var(--warn)">Sleep Below Target</div>
+      <div class="insight-text">Your average sleep of {{ stats.avg_sleep }}h is below the recommended 7–9 hours. Try going to bed 30 minutes earlier.</div>
+    </div>
+    {% elif stats.avg_sleep %}
+    <div class="insight-card" style="border-color:rgba(0,212,170,0.3)">
+      <div class="insight-icon">✅</div>
+      <div class="insight-title" style="color:var(--accent)">Good Sleep Habits</div>
+      <div class="insight-text">Averaging {{ stats.avg_sleep }}h of sleep — you're in the healthy range. Keep maintaining a consistent bedtime.</div>
+    </div>
+    {% endif %}
+
+    {% if stats.avg_exercise and stats.avg_exercise < 30 %}
+    <div class="insight-card" style="border-color:rgba(255,79,109,0.3)">
+      <div class="insight-icon">🏃</div>
+      <div class="insight-title" style="color:var(--danger)">Low Activity Level</div>
+      <div class="insight-text">You're averaging only {{ stats.avg_exercise }} min/day. WHO recommends 150 min/week. Try adding a 20-minute walk daily.</div>
+    </div>
+    {% elif stats.avg_exercise %}
+    <div class="insight-card" style="border-color:rgba(0,212,170,0.3)">
+      <div class="insight-icon">💪</div>
+      <div class="insight-title" style="color:var(--accent)">Active Lifestyle</div>
+      <div class="insight-text">Great job! Averaging {{ stats.avg_exercise }} min of exercise per day. Consistent activity reduces chronic disease risk by up to 35%.</div>
+    </div>
+    {% endif %}
+
+    {% if stats.avg_sugar and stats.avg_sugar >= 126 %}
+    <div class="insight-card" style="border-color:rgba(255,79,109,0.3)">
+      <div class="insight-icon">🩸</div>
+      <div class="insight-title" style="color:var(--danger)">High Sugar Average</div>
+      <div class="insight-text">Average sugar of {{ stats.avg_sugar }} mg/dL is in the diabetic range. Please consult your doctor and reduce simple carbohydrates.</div>
+    </div>
+    {% elif stats.avg_sugar and stats.avg_sugar >= 100 %}
+    <div class="insight-card" style="border-color:rgba(255,179,71,0.3)">
+      <div class="insight-icon">⚡</div>
+      <div class="insight-title" style="color:var(--warn)">Pre-diabetic Sugar Range</div>
+      <div class="insight-text">Average sugar {{ stats.avg_sugar }} mg/dL is borderline. Cut refined sugars and increase fiber intake to bring it down.</div>
+    </div>
+    {% endif %}
+
+    {% if stats.avg_systolic and stats.avg_systolic >= 140 %}
+    <div class="insight-card" style="border-color:rgba(255,79,109,0.3)">
+      <div class="insight-icon">❤️</div>
+      <div class="insight-title" style="color:var(--danger)">High BP Average</div>
+      <div class="insight-text">Average BP {{ stats.avg_systolic }}/{{ stats.avg_diastolic }} mmHg is hypertensive. Reduce salt, increase potassium-rich foods, and consult your doctor.</div>
+    </div>
+    {% endif %}
+
+    {% if stats.avg_stress and stats.avg_stress >= 7 %}
+    <div class="insight-card" style="border-color:rgba(255,79,109,0.3)">
+      <div class="insight-icon">🤯</div>
+      <div class="insight-title" style="color:var(--danger)">Chronic High Stress</div>
+      <div class="insight-text">Averaging {{ stats.avg_stress }}/10 stress over {{ period }} days is concerning. Chronic stress raises BP and blood sugar. Prioritize relaxation daily.</div>
+    </div>
+    {% endif %}
+
+    <div class="insight-card">
+      <div class="insight-icon">📊</div>
+      <div class="insight-title">{{ stats.entry_count }} Entries Logged</div>
+      <div class="insight-text">You've tracked {{ stats.entry_count }} entries in {{ period }} days. Consistency is key — the more you log, the better your insights.</div>
+    </div>
+
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Data from Flask
+  const dates    = {{ series.dates | tojson }};
+  const systolic = {{ series.systolic | tojson }};
+  const diastolic= {{ series.diastolic | tojson }};
+  const sugar    = {{ series.sugar | tojson }};
+  const sleep    = {{ series.sleep | tojson }};
+  const weight   = {{ series.weight | tojson }};
+  const mood     = {{ series.mood | tojson }};
+  const stress   = {{ series.stress | tojson }};
+  const exercise = {{ series.exercise | tojson }};
+
+  // Shared Plotly layout config
+  const baseLayout = {
+    paper_bgcolor: 'transparent',
+    plot_bgcolor:  'transparent',
+    font:  { color: '#6a8fa0', family: 'DM Sans, sans-serif', size: 11 },
+    margin:{ t: 10, r: 10, b: 40, l: 45 },
+    xaxis: {
+      gridcolor: '#1e3444', tickfont: { size: 10 },
+      showgrid: false, zeroline: false,
+    },
+    yaxis: {
+      gridcolor: '#1e3444', tickfont: { size: 10 },
+      gridwidth: 1, zeroline: false,
+    },
+    legend: { font: { size: 10 }, bgcolor: 'transparent' },
+    hovermode: 'x unified',
+  };
+
+  const config = { displayModeBar: false, responsive: true };
+
+  // Helper: filter nulls keeping index alignment
+  function cleanXY(xs, ys) {
+    const cx = [], cy = [];
+    xs.forEach((x, i) => { if (ys[i] !== null) { cx.push(x); cy.push(ys[i]); } });
+    return [cx, cy];
+  }
+
+  // ── BP CHART ──
+  const [bpX1, bpY1] = cleanXY(dates, systolic);
+  const [bpX2, bpY2] = cleanXY(dates, diastolic);
+  Plotly.newPlot('bpChart', [
+    { x: bpX1, y: bpY1, name: 'Systolic',  type: 'scatter', mode: 'lines+markers',
+      line: { color: '#ff4f6d', width: 2 }, marker: { size: 5 },
+      fill: 'tozeroy', fillcolor: 'rgba(255,79,109,0.06)' },
+    { x: bpX2, y: bpY2, name: 'Diastolic', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#0099ff', width: 2 }, marker: { size: 5 } },
+    { x: dates, y: Array(dates.length).fill(140), name: 'High (140)',
+      type: 'scatter', mode: 'lines',
+      line: { color: 'rgba(255,79,109,0.4)', width: 1, dash: 'dash' },
+      showlegend: true }
+  ], {...baseLayout}, config);
+
+  // ── SUGAR CHART ──
+  const [sgX, sgY] = cleanXY(dates, sugar);
+  Plotly.newPlot('sugarChart', [
+    { x: sgX, y: sgY, name: 'Sugar', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#ffb347', width: 2 }, marker: { size: 5 },
+      fill: 'tozeroy', fillcolor: 'rgba(255,179,71,0.06)' },
+    { x: dates, y: Array(dates.length).fill(126), name: 'Diabetic (126)',
+      type: 'scatter', mode: 'lines',
+      line: { color: 'rgba(255,79,109,0.4)', width: 1, dash: 'dash' } },
+    { x: dates, y: Array(dates.length).fill(100), name: 'Pre-diabetic (100)',
+      type: 'scatter', mode: 'lines',
+      line: { color: 'rgba(255,179,71,0.4)', width: 1, dash: 'dot' } }
+  ], {...baseLayout}, config);
+
+  // ── SLEEP CHART ──
+  const [slX, slY] = cleanXY(dates, sleep);
+  Plotly.newPlot('sleepChart', [
+    { x: slX, y: slY, name: 'Sleep hrs', type: 'bar',
+      marker: { color: slY.map(v => v < 6 ? '#ff4f6d' : v < 7 ? '#ffb347' : '#00d4aa'),
+                opacity: 0.85 } },
+    { x: dates, y: Array(dates.length).fill(7), name: 'Target (7h)',
+      type: 'scatter', mode: 'lines',
+      line: { color: 'rgba(0,212,170,0.5)', width: 1.5, dash: 'dash' } }
+  ], {...baseLayout}, config);
+
+  // ── WEIGHT CHART ──
+  const [wtX, wtY] = cleanXY(dates, weight);
+  Plotly.newPlot('weightChart', [
+    { x: wtX, y: wtY, name: 'Weight kg', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#0099ff', width: 2.5 }, marker: { size: 6, color: '#0099ff' },
+      fill: 'tozeroy', fillcolor: 'rgba(0,153,255,0.06)' }
+  ], {...baseLayout}, config);
+
+  // ── MOOD & STRESS CHART ──
+  const [mdX, mdY] = cleanXY(dates, mood);
+  const [stX, stY] = cleanXY(dates, stress);
+  Plotly.newPlot('moodChart', [
+    { x: mdX, y: mdY, name: 'Mood', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#00d4aa', width: 2 }, marker: { size: 5 },
+      fill: 'tozeroy', fillcolor: 'rgba(0,212,170,0.05)' },
+    { x: stX, y: stY, name: 'Stress', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#ff4f6d', width: 2 }, marker: { size: 5 },
+      fill: 'tozeroy', fillcolor: 'rgba(255,79,109,0.05)' }
+  ], {
+    ...baseLayout,
+    yaxis: { ...baseLayout.yaxis, range: [0, 11], dtick: 2 }
+  }, config);
+
+  // ── EXERCISE CHART ──
+  const [exX, exY] = cleanXY(dates, exercise);
+  Plotly.newPlot('exerciseChart', [
+    { x: exX, y: exY, name: 'Exercise min', type: 'bar',
+      marker: { color: exY.map(v => v >= 30 ? '#00d4aa' : v >= 15 ? '#ffb347' : '#ff4f6d'),
+                opacity: 0.85 } },
+    { x: dates, y: Array(dates.length).fill(30), name: 'Target (30 min)',
+      type: 'scatter', mode: 'lines',
+      line: { color: 'rgba(0,212,170,0.5)', width: 1.5, dash: 'dash' } }
+  ], {...baseLayout}, config);
+
+</script>
+{% endblock %}

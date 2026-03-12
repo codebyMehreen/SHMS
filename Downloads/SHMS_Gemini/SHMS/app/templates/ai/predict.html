@@ -1,0 +1,407 @@
+{% extends 'base.html' %}
+{% block title %}AI Health Analysis — SHMS{% endblock %}
+
+{% block head %}
+<style>
+  .ai-wrap {
+    max-width: 1000px; margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+
+  /* PAGE HEADER */
+  .ai-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap;
+    gap: 1rem; margin-bottom: 2.5rem;
+  }
+  .ai-header h1 {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px;
+    margin-bottom: 0.25rem;
+  }
+  .ai-header p { color: var(--muted); font-size: 0.875rem; }
+
+  /* OVERALL RISK SCORE */
+  .overall-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2rem;
+    align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .overall-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 0% 50%,
+      rgba(0,212,170,0.06) 0%, transparent 60%);
+  }
+  .score-ring {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative; flex-shrink: 0;
+  }
+  .score-ring svg {
+    position: absolute; top: 0; left: 0;
+    width: 120px; height: 120px;
+    transform: rotate(-90deg);
+  }
+  .score-ring-bg  { fill: none; stroke: var(--border); stroke-width: 8; }
+  .score-ring-fill{
+    fill: none; stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.5s ease;
+  }
+  .score-number {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800;
+    position: relative; z-index: 1; line-height: 1;
+  }
+  .score-label {
+    font-size: 0.65rem; font-weight: 600;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.05em; position: relative; z-index: 1;
+  }
+  .overall-info { position: relative; z-index: 1; }
+  .overall-level {
+    font-family: var(--font-head);
+    font-size: 1.5rem; font-weight: 800;
+    margin-bottom: 0.4rem;
+  }
+  .overall-desc { color: var(--muted); font-size: 0.9rem; line-height: 1.6; max-width: 500px; }
+
+  /* RISK CARDS GRID */
+  .risks-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .risk-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .risk-card:hover { transform: translateY(-3px); }
+  .risk-card.danger  { border-color: rgba(255,79,109,0.4); }
+  .risk-card.warning { border-color: rgba(255,179,71,0.4); }
+  .risk-card.success { border-color: rgba(0,212,170,0.4); }
+
+  .risk-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+  .risk-name {
+    font-family: var(--font-head);
+    font-size: 0.85rem; font-weight: 700;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 0.75rem;
+  }
+  .risk-prob {
+    font-family: var(--font-head);
+    font-size: 2.2rem; font-weight: 800; line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .risk-card.danger  .risk-prob { color: var(--danger); }
+  .risk-card.warning .risk-prob { color: var(--warn); }
+  .risk-card.success .risk-prob { color: var(--accent); }
+  .risk-level-badge {
+    display: inline-block; padding: 0.2rem 0.7rem;
+    border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+  }
+  .risk-card.danger  .risk-level-badge { background: rgba(255,79,109,0.15); color: var(--danger); }
+  .risk-card.warning .risk-level-badge { background: rgba(255,179,71,0.15); color: var(--warn); }
+  .risk-card.success .risk-level-badge { background: rgba(0,212,170,0.15);  color: var(--accent); }
+
+  /* PROGRESS BAR */
+  .risk-bar-wrap {
+    background: var(--bg2); border-radius: 4px;
+    height: 5px; margin-top: 0.75rem; overflow: hidden;
+  }
+  .risk-bar {
+    height: 100%; border-radius: 4px;
+    transition: width 1.5s ease;
+  }
+  .risk-card.danger  .risk-bar { background: var(--danger); }
+  .risk-card.warning .risk-bar { background: var(--warn); }
+  .risk-card.success .risk-bar { background: var(--accent); }
+
+  /* ALERTS SECTION */
+  .section-title {
+    font-family: var(--font-head);
+    font-size: 1.1rem; font-weight: 800;
+    margin-bottom: 1rem; display: flex;
+    align-items: center; gap: 0.5rem;
+  }
+  .alert-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 14px; border-left: 3px solid;
+  }
+  .alert-item.danger  { background: rgba(255,79,109,0.08);  border-color: var(--danger); }
+  .alert-item.warning { background: rgba(255,179,71,0.08);  border-color: var(--warn); }
+  .alert-item.info    { background: rgba(0,153,255,0.08);   border-color: var(--accent2); }
+  .alert-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .alert-title {
+    font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem;
+  }
+  .alert-item.danger  .alert-title { color: var(--danger); }
+  .alert-item.warning .alert-title { color: var(--warn); }
+  .alert-msg { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+  .no-alerts {
+    background: rgba(0,212,170,0.08);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 14px; padding: 1.25rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    color: var(--accent); font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+
+  /* RECOMMENDATIONS */
+  .recs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .rec-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .rec-card:hover { border-color: var(--accent); }
+  .rec-category {
+    font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+  }
+  .rec-card[data-color="green"]  .rec-category { color: var(--accent); }
+  .rec-card[data-color="blue"]   .rec-category { color: var(--accent2); }
+  .rec-card[data-color="orange"] .rec-category { color: var(--warn); }
+  .rec-card[data-color="red"]    .rec-category { color: var(--danger); }
+  .rec-card[data-color="purple"] .rec-category { color: #a064ff; }
+  .rec-card[data-color="yellow"] .rec-category { color: #ffd700; }
+  .rec-tip { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+
+  /* ENTRY SUMMARY */
+  .entry-summary {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 1rem; margin-top: 1rem;
+  }
+  .summary-item { text-align: center; }
+  .summary-val {
+    font-family: var(--font-head);
+    font-size: 1.4rem; font-weight: 800;
+    color: var(--accent);
+  }
+  .summary-key {
+    font-size: 0.72rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-top: 0.2rem;
+  }
+
+  /* ACTION BUTTONS */
+  .action-row {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 640px) {
+    .risks-grid { grid-template-columns: 1fr; }
+    .overall-card { grid-template-columns: 1fr; text-align: center; }
+    .score-ring { margin: 0 auto; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ai-wrap">
+
+  <!-- Header -->
+  <div class="ai-header">
+    <div>
+      <h1>🤖 AI Health Analysis</h1>
+      <p>Entry from {{ entry.timestamp.strftime('%B %d, %Y at %H:%M') }} — Powered by Machine Learning</p>
+    </div>
+    <div style="display:flex; gap:0.6rem;">
+      <a href="{{ url_for('health.log_entry') }}" class="btn btn-outline">+ New Entry</a>
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline">Dashboard</a>
+    </div>
+  </div>
+
+  <!-- OVERALL RISK SCORE -->
+  {% set ov = risks.overall %}
+  {% set stroke_color = '#ff4f6d' if ov.color == 'danger' else ('#ffb347' if ov.color == 'warning' else '#00d4aa') %}
+  {% set circumference = 326 %}
+  {% set dash = (ov.score / 100 * circumference)|round(1) %}
+
+  <div class="overall-card">
+    <div class="score-ring">
+      <svg viewBox="0 0 120 120">
+        <circle class="score-ring-bg"   cx="60" cy="60" r="52"/>
+        <circle class="score-ring-fill"
+                cx="60" cy="60" r="52"
+                stroke="{{ stroke_color }}"
+                stroke-dasharray="{{ circumference }}"
+                stroke-dashoffset="{{ circumference - dash }}"
+                id="ringFill"/>
+      </svg>
+      <div class="score-number" style="color:{{ stroke_color }}">{{ ov.score }}%</div>
+      <div class="score-label">Risk</div>
+    </div>
+    <div class="overall-info">
+      <div class="overall-level" style="color:{{ stroke_color }}">{{ ov.level }}</div>
+      <p class="overall-desc">
+        {% if ov.color == 'danger' %}
+          Your overall health indicators suggest significant risk factors that need immediate attention. Please review the alerts below and consult a healthcare professional.
+        {% elif ov.color == 'warning' %}
+          Some of your health indicators are in borderline ranges. With the right lifestyle adjustments, you can significantly reduce your risk. Follow the recommendations below.
+        {% else %}
+          Your health indicators look good! Keep up your healthy habits. Stay consistent with exercise, sleep, and diet to maintain this status.
+        {% endif %}
+      </p>
+      <div class="action-row" style="margin-top:1rem;">
+        <a href="{{ url_for('health.all_entries') }}" class="btn btn-outline btn-sm">View All Entries</a>
+        <a href="{{ url_for('health.edit_entry', entry_id=entry.id) }}" class="btn btn-outline btn-sm">Edit This Entry</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 RISK CARDS -->
+  <div class="risks-grid">
+    <div class="risk-card {{ risks.diabetes.color }}">
+      <div class="risk-icon">🩸</div>
+      <div class="risk-name">Diabetes Risk</div>
+      <div class="risk-prob">{{ risks.diabetes.probability }}%</div>
+      <div class="risk-level-badge">{{ risks.diabetes.level }}</div>
+      <div class="risk-bar-wrap">
+        <div class="risk-bar" style="width:{{ risks.diabetes.probability }}%"></div>
+      </div>
+    </div>
+    <div class="risk-card {{ risks.hypertension.color }}">
+      <div class="risk-icon">❤️</div>
+      <div class="risk-name">Hypertension Risk</div>
+      <div class="risk-prob">{{ risks.hypertension.probability }}%</div>
+      <div class="risk-level-badge">{{ risks.hypertension.level }}</div>
+      <div class="risk-bar-wrap">
+        <div class="risk-bar" style="width:{{ risks.hypertension.probability }}%"></div>
+      </div>
+    </div>
+    <div class="risk-card {{ risks.stress.color }}">
+      <div class="risk-icon">🧠</div>
+      <div class="risk-name">Stress Risk</div>
+      <div class="risk-prob">{{ risks.stress.probability }}%</div>
+      <div class="risk-level-badge">{{ risks.stress.level }}</div>
+      <div class="risk-bar-wrap">
+        <div class="risk-bar" style="width:{{ risks.stress.probability }}%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTRY DATA SUMMARY -->
+  <div class="entry-summary">
+    <div class="section-title">📊 Entry Data Used for Analysis</div>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-val">{{ entry.weight or '—' }}</div>
+        <div class="summary-key">Weight (kg)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val">
+          {% if entry.systolic_bp %}{{ entry.systolic_bp }}/{{ entry.diastolic_bp }}{% else %}—{% endif %}
+        </div>
+        <div class="summary-key">Blood Pressure</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val">{{ entry.sugar_level or '—' }}</div>
+        <div class="summary-key">Sugar (mg/dL)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val">{{ entry.sleep_hours or '—' }}</div>
+        <div class="summary-key">Sleep (hrs)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val">{{ entry.exercise_minutes or '—' }}</div>
+        <div class="summary-key">Exercise (min)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val">{{ entry.mood or '—' }}/10</div>
+        <div class="summary-key">Mood</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val">{{ entry.stress_level or '—' }}/10</div>
+        <div class="summary-key">Stress</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="section-title">🚨 Health Alerts</div>
+  {% if alerts %}
+    <div class="alert-list">
+      {% for alert in alerts %}
+      <div class="alert-item {{ alert.type }}">
+        <div class="alert-icon">{{ alert.icon }}</div>
+        <div>
+          <div class="alert-title">{{ alert.title }}</div>
+          <div class="alert-msg">{{ alert.msg }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="no-alerts">
+      ✅ No critical alerts for this entry. All your values are within healthy ranges!
+    </div>
+  {% endif %}
+
+  <!-- RECOMMENDATIONS -->
+  <div class="section-title">💡 Personalized Recommendations</div>
+  <div class="recs-grid">
+    {% for rec in recs %}
+    <div class="rec-card" data-color="{{ rec.color }}">
+      <div class="rec-category">{{ rec.category }}</div>
+      <div class="rec-tip">{{ rec.tip }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div style="background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+              padding:1rem 1.25rem; font-size:0.78rem; color:var(--muted); line-height:1.6;">
+    ⚕️ <strong style="color:var(--text)">Medical Disclaimer:</strong>
+    This AI analysis is for informational purposes only and does not constitute medical advice.
+    Always consult a qualified healthcare professional for diagnosis and treatment.
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Animate risk bars on load
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.risk-bar').forEach(bar => {
+      const w = bar.style.width;
+      bar.style.width = '0%';
+      setTimeout(() => { bar.style.width = w; }, 100);
+    });
+  });
+</script>
+{% endblock %}

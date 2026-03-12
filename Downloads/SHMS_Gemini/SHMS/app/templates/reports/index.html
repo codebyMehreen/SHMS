@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block title %}Health Reports — SHMS{% endblock %}
+
+{% block head %}
+<style>
+  .reports-wrap {
+    max-width: 800px; margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+  .reports-wrap h1 {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800;
+    letter-spacing: -0.5px; margin-bottom: 0.3rem;
+  }
+  .reports-wrap > p { color: var(--muted); font-size: 0.875rem; margin-bottom: 2rem; }
+
+  .report-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .report-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 1.75rem;
+    text-align: center; cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s;
+    text-decoration: none; display: block;
+  }
+  .report-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+  }
+  .report-card-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .report-card-title {
+    font-family: var(--font-head);
+    font-size: 1rem; font-weight: 700;
+    color: var(--text); margin-bottom: 0.4rem;
+  }
+  .report-card-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .report-card-badge {
+    display: inline-block; margin-top: 0.75rem;
+    padding: 0.25rem 0.75rem; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700;
+    background: rgba(0,212,170,0.15); color: var(--accent);
+  }
+
+  .what-included {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .what-included h3 {
+    font-family: var(--font-head);
+    font-size: 1rem; font-weight: 700;
+    margin-bottom: 1rem; color: var(--text);
+  }
+  .included-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.6rem;
+  }
+  .included-item {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-size: 0.85rem; color: var(--muted);
+  }
+  .included-item::before {
+    content: '✓'; color: var(--accent);
+    font-weight: 700; flex-shrink: 0;
+  }
+
+  .no-data-card {
+    background: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: 18px; padding: 3rem 2rem;
+    text-align: center;
+  }
+  .no-data-card p { color: var(--muted); margin-bottom: 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reports-wrap">
+  <h1>📄 Health Reports</h1>
+  <p>Download a professional PDF report of your health data, AI analysis, alerts and recommendations.</p>
+
+  {% if total == 0 %}
+  <div class="no-data-card">
+    <div style="font-size:3rem; margin-bottom:1rem;">📋</div>
+    <div style="font-family:var(--font-head); font-size:1.2rem; font-weight:700; margin-bottom:0.5rem;">
+      No Health Data Yet
+    </div>
+    <p>You need at least one health entry to generate a report.</p>
+    <a href="{{ url_for('health.log_entry') }}" class="btn btn-primary btn-lg">
+      + Log First Entry
+    </a>
+  </div>
+
+  {% else %}
+
+  <!-- REPORT PERIOD CARDS -->
+  <div class="report-cards">
+    <a href="{{ url_for('reports.download_report', period=7) }}" class="report-card">
+      <div class="report-card-icon">📅</div>
+      <div class="report-card-title">Weekly Report</div>
+      <div class="report-card-desc">Last 7 days of health data with trends and AI analysis</div>
+      <div class="report-card-badge">⬇ Download PDF</div>
+    </a>
+
+    <a href="{{ url_for('reports.download_report', period=30) }}" class="report-card">
+      <div class="report-card-icon">📆</div>
+      <div class="report-card-title">Monthly Report</div>
+      <div class="report-card-desc">Last 30 days — most popular for doctor visits</div>
+      <div class="report-card-badge">⬇ Download PDF</div>
+    </a>
+
+    <a href="{{ url_for('reports.download_report', period=90) }}" class="report-card">
+      <div class="report-card-icon">🗓️</div>
+      <div class="report-card-title">Quarterly Report</div>
+      <div class="report-card-desc">Last 90 days of complete health history</div>
+      <div class="report-card-badge">⬇ Download PDF</div>
+    </a>
+
+    <a href="{{ url_for('reports.download_report', period=0) }}" class="report-card">
+      <div class="report-card-icon">📊</div>
+      <div class="report-card-title">Full History</div>
+      <div class="report-card-desc">All {{ total }} entries — your complete health record</div>
+      <div class="report-card-badge">⬇ Download PDF</div>
+    </a>
+  </div>
+
+  <!-- WHAT'S INCLUDED -->
+  <div class="what-included">
+    <h3>📋 What's included in every report</h3>
+    <div class="included-grid">
+      <div class="included-item">AI Risk Score (Overall)</div>
+      <div class="included-item">Diabetes Risk %</div>
+      <div class="included-item">Hypertension Risk %</div>
+      <div class="included-item">Stress Risk %</div>
+      <div class="included-item">Health Alerts</div>
+      <div class="included-item">Personalized Recommendations</div>
+      <div class="included-item">Full Data Table</div>
+      <div class="included-item">Patient Summary</div>
+      <div class="included-item">Medical Disclaimer</div>
+    </div>
+  </div>
+
+  <div style="background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+              padding:1rem 1.25rem; font-size:0.8rem; color:var(--muted);">
+    💡 <strong style="color:var(--text)">Tip:</strong>
+    The monthly report is ideal to bring to your doctor — it shows your AI risk scores,
+    alerts, and complete health data in a clean professional format.
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}

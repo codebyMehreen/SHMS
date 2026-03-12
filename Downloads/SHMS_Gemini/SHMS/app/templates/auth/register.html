@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}Create Account — SHMS{% endblock %}
+
+{% block head %}
+<style>
+  .auth-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .auth-left {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 3rem; position: relative; overflow: hidden;
+  }
+  .auth-left::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 70% 30%, rgba(0,153,255,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse at 20% 80%, rgba(0,212,170,0.05) 0%, transparent 60%);
+  }
+  .auth-left-content { position: relative; z-index: 1; max-width: 360px; }
+  .brand-mark {
+    font-family: var(--font-head);
+    font-size: 2.5rem; font-weight: 800;
+    color: var(--accent); letter-spacing: -2px; margin-bottom: 0.5rem;
+  }
+  .brand-mark span { color: var(--text); }
+  .brand-tagline { font-size: 0.95rem; color: var(--muted); margin-bottom: 2.5rem; line-height: 1.5; }
+
+  .steps { display: flex; flex-direction: column; gap: 1rem; }
+  .step { display: flex; align-items: flex-start; gap: 1rem; }
+  .step-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-size: 0.8rem; font-weight: 700;
+    color: var(--bg); flex-shrink: 0;
+  }
+  .step-text strong { display: block; color: var(--text); font-size: 0.9rem; font-weight: 600; }
+  .step-text span { color: var(--muted); font-size: 0.82rem; }
+
+  .auth-right {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 3rem;
+  }
+  .auth-form-wrap { width: 100%; max-width: 420px; }
+  .auth-heading {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 800;
+    margin-bottom: 0.3rem; letter-spacing: -0.5px;
+  }
+  .auth-sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 2rem; }
+  .auth-sub a { color: var(--accent); text-decoration: none; }
+  .auth-sub a:hover { text-decoration: underline; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  @media (max-width: 768px) {
+    .auth-page { grid-template-columns: 1fr; }
+    .auth-left { display: none; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div class="brand-mark">SHMS<span>.</span></div>
+      <p class="brand-tagline">Start your health journey in under 60 seconds.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Create your account</strong>
+            <span>Free, secure, and private</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Log your first health entry</strong>
+            <span>Weight, BP, sugar, sleep & more</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Get your AI health report</strong>
+            <span>Predictions, alerts & recommendations</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text">
+            <strong>Track your improvement</strong>
+            <span>Charts and trends over time</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+      <h1 class="auth-heading">Create account</h1>
+      <p class="auth-sub">Already have one? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+
+      <form method="POST" action="{{ url_for('auth.register') }}">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" name="full_name" class="form-control"
+                 placeholder="Muhammad Ali" required
+                 value="{{ form_data.get('full_name', '') }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" name="email" class="form-control"
+                 placeholder="you@example.com" required
+                 value="{{ form_data.get('email', '') }}">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Age</label>
+            <input type="number" name="age" class="form-control"
+                   placeholder="25" min="1" max="120"
+                   value="{{ form_data.get('age', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select name="gender" class="form-control">
+              <option value="">Select</option>
+              <option value="male"   {% if form_data.get('gender')=='male' %}selected{% endif %}>Male</option>
+              <option value="female" {% if form_data.get('gender')=='female' %}selected{% endif %}>Female</option>
+              <option value="other"  {% if form_data.get('gender')=='other' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control"
+                 placeholder="Min. 6 characters" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input type="password" name="confirm_password" class="form-control"
+                 placeholder="Re-enter password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:0.5rem;">
+          Create Account →
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
